@@ -252,39 +252,80 @@ int main() {
 			}
 
 			bool too_close = false;
+			double front_car_speed = 0;
+			bool left_lane_safe = true;
+			bool right_lane_safe = true;
+
+			if (lane == 0)
+			{
+				left_lane_safe = false;
+			}
+
+			if (lane == 2)
+			{
+				right_lane_safe = false;
+			}
 
 			//find ref_v to use //wt
-			for(int i = 0; i < sensor_fusion.size(); i++) // loop over all the cars from senor_fusion data
+			for(int i = 0; i < sensor_fusion.size(); i++) // loop over all the cars from sensor_fusion data
 			{
-				//capture detected car lane
-				float d = sensor_fusion[i][6];
-				if(d<(2+4*lane+2) && d>(2+4*lane-2)) //check if the ith car is in my lane
-				{
-					double vx = sensor_fusion[i][3]; // x velocity
-					double vy = sensor_fusion[i][4]; // y velocity
-					double check_speed = sqrt(vx*vx+vy*vy); 
-					double check_car_s = sensor_fusion[i][5]; // s value of the ith car
+				//capture surrounding cars information from sensor_fusion data
+				float d = sensor_fusion[i][6]; // inform about lane
+				double vx = sensor_fusion[i][3]; // x velocity
+				double vy = sensor_fusion[i][4]; // y velocity
+				double check_speed = sqrt(vx*vx+vy*vy); // car speed
+				double check_car_s = sensor_fusion[i][5]; // s value of the car 
+				check_car_s+=((double)prev_size*.02*check_speed); //project s position of the car
 
-					check_car_s+=((double)prev_size*.02*check_speed);
+								
+				if(d<(2+4*lane+2) && d>(2+4*lane-2)) //convert lane number into d in m and check if the ith car is in my lane
+				{
 					//check s values greater than mine (car upfront) and s gap < 30m (safe distance)
 					if((check_car_s > car_s) && ((check_car_s - car_s) < 30))
 					{
 						//flag to try to change lanes
 						too_close = true;
-						/*
-						if(lane > 0)
-						{
-							lane = 0; // turn left
-						}
-						*/
+						front_car_speed = check_speed;
 					} 
+				}
+
+				//keep an eye on cars in left lane for lane change if needed
+				else if (d<(2+4*(lane-1)+2) && d>(2+4*(lane-1)-2)) //check if the ith car is in my left lane
+				{
+					if ((check_car_s - car_s) < 40 && (check_car_s - car_s) > -20)
+					{
+						left_lane_safe = false;
+					}
+				}
+
+				//keep an eye on cars in right lane for lane change if needed
+				else if (d<(2+4*(lane+1)+2) && d>(2+4*(lane+1)-2)) //check if the ith car is in my right lane
+				{
+					if ((check_car_s - car_s) < 40 && (check_car_s - car_s) > -20)
+					{
+						right_lane_safe = false;
+					}
 				}
 			}
 
 			//incremental deceleration/acceleration to avoid to exceed jerk limits
 			if (too_close) // if obstacle upfront => incremental break 
 			{
-				ref_vel -= .224; 
+				if (ref_vel > front_car_speed)
+				{
+					ref_vel -= .224*.75;
+				}
+				
+				if (left_lane_safe) 
+				{
+					ref_vel -= .224/2;
+					lane -= 1;
+				}
+				else if (right_lane_safe)
+				{
+					ref_vel -= .224/2;
+					lane += 1;
+				}
 			} else if (ref_vel < 49.5) // our target velocity is 49.5 when no obstacle => incremental acceleration
 			{
 				ref_vel += .224;
@@ -378,7 +419,7 @@ int main() {
 			}
 
 			// calculate how to break up spline points so that we travel at our desired reference velocity //wt
-			double target_x = 30.0;
+			double target_x = 50.0;
 			double target_y = s(target_x);
 			double target_dist = sqrt(target_x*target_x+target_y*target_y);
 
