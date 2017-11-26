@@ -170,11 +170,11 @@ int main() {
   vector<double> map_waypoints_dx;
   vector<double> map_waypoints_dy;
 
-  //start in lane 1 //wt
+  //Define a lane index variable and start in the mid-lane (lane N°1)
   int lane = 1;
 	  
-  //Have a reference velocity to target /wt
-  double ref_vel = 0; //mph start with 0 velocity to incrementally accelerate (and evoid high jerk...)
+  //Define a reference velocity variable in mph
+  double ref_vel = 0; //start with 0 velocity to incrementally accelerate (and evoid high jerk...)
 
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
@@ -220,7 +220,9 @@ int main() {
       if (s != "") {
         auto j = json::parse(s);
         
-        string event = j[0].get<string>();
+		string event = j[0].get<string>();
+		
+		// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
         
         if (event == "telemetry") {
           // j[1] is the data JSON object
@@ -243,7 +245,7 @@ int main() {
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
 
-			// previous path size //wt
+			// store thesize of the previous path the car was visiting
 			int prev_size = previous_path_x.size();
 
 			if (prev_size > 0)
@@ -318,12 +320,12 @@ int main() {
 				
 				if (left_lane_safe) 
 				{
-					ref_vel -= .224/2;
+					ref_vel -= .224;
 					lane -= 1;
 				}
 				else if (right_lane_safe)
 				{
-					ref_vel -= .224/2;
+					ref_vel -= .224;
 					lane += 1;
 				}
 			} else if (ref_vel < 49.5) // our target velocity is 49.5 when no obstacle => incremental acceleration
@@ -331,7 +333,7 @@ int main() {
 				ref_vel += .224;
 			}
 
-			// create a list of widely spaced (x,y) watpoints, evenly spaced at 30m //wt
+			// create a list of widely spaced (x,y) waypoints, evenly spaced //wt
 			vector<double> ptsx;
 			vector<double> ptsy;
 
@@ -372,7 +374,7 @@ int main() {
 				ptsy.push_back(ref_y);
 			}
 
-			//in Frenet add evenly 30m spaced points ahead of the starting reference //wt
+			//in Frenet add evenly 20m spaced points ahead of the starting reference //wt
 			vector<double> next_wp0 = getXY(car_s+30, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 			vector<double> next_wp1 = getXY(car_s+60, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 			vector<double> next_wp2 = getXY(car_s+90, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
@@ -400,16 +402,12 @@ int main() {
 
 			// set (x,y) points to the spline //wt
 			s.set_points(ptsx,ptsy);
-
-			//}
 			  
           	json msgJson;
 
 			//define the actual (x,y) points to use for the planner
           	vector<double> next_x_vals;
           	vector<double> next_y_vals;
-
-			// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 			 
 			// start with all the previous path points //wt
 			for(int i = 0; i < previous_path_x.size(); i++)
@@ -419,7 +417,7 @@ int main() {
 			}
 
 			// calculate how to break up spline points so that we travel at our desired reference velocity //wt
-			double target_x = 50.0;
+			double target_x = 30.0;
 			double target_y = s(target_x);
 			double target_dist = sqrt(target_x*target_x+target_y*target_y);
 
