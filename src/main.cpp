@@ -170,6 +170,12 @@ int main() {
   vector<double> map_waypoints_dx;
   vector<double> map_waypoints_dy;
 
+  //start in lane 1 //wt
+  int lane = 1;
+	  
+  //Have a reference velocity to target /wt
+  double ref_vel = 0; //mph start with 0 velocity to incrementally accelerate (and evoid high jerk...)
+
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
   // The max s value before wrapping around the track back to 0
@@ -194,12 +200,11 @@ int main() {
   	map_waypoints_y.push_back(y);
   	map_waypoints_s.push_back(s);
   	map_waypoints_dx.push_back(d_x);
-  	map_waypoints_dy.push_back(d_y);
+    map_waypoints_dy.push_back(d_y);
   }
 
- 
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&ref_vel,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -207,12 +212,6 @@ int main() {
     //auto sdata = string(data).substr(0, length);
 	//cout << sdata << endl;
 	  
-	//start in lane 1 //wt
-	int lane = 1;
-	  
-	//Have a reference velocity to target /wt
-	double ref_vel = 49.5; //mph
-
 
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
 
@@ -246,6 +245,50 @@ int main() {
 
 			// previous path size //wt
 			int prev_size = previous_path_x.size();
+
+			if (prev_size > 0)
+			{
+				car_s = end_path_s;
+			}
+
+			bool too_close = false;
+
+			//find ref_v to use //wt
+			for(int i = 0; i < sensor_fusion.size(); i++) // loop over all the cars from senor_fusion data
+			{
+				//capture detected car lane
+				float d = sensor_fusion[i][6];
+				if(d<(2+4*lane+2) && d>(2+4*lane-2)) //check if the ith car is in my lane
+				{
+					double vx = sensor_fusion[i][3]; // x velocity
+					double vy = sensor_fusion[i][4]; // y velocity
+					double check_speed = sqrt(vx*vx+vy*vy); 
+					double check_car_s = sensor_fusion[i][5]; // s value of the ith car
+
+					check_car_s+=((double)prev_size*.02*check_speed);
+					//check s values greater than mine (car upfront) and s gap < 30m (safe distance)
+					if((check_car_s > car_s) && ((check_car_s - car_s) < 30))
+					{
+						//flag to try to change lanes
+						too_close = true;
+						/*
+						if(lane > 0)
+						{
+							lane = 0; // turn left
+						}
+						*/
+					} 
+				}
+			}
+
+			//incremental deceleration/acceleration to avoid to exceed jerk limits
+			if (too_close) // if obstacle upfront => incremental break 
+			{
+				ref_vel -= .224; 
+			} else if (ref_vel < 49.5) // our target velocity is 49.5 when no obstacle => incremental acceleration
+			{
+				ref_vel += .224;
+			}
 
 			// create a list of widely spaced (x,y) watpoints, evenly spaced at 30m //wt
 			vector<double> ptsx;
@@ -324,7 +367,6 @@ int main() {
 			//define the actual (x,y) points to use for the planner
           	vector<double> next_x_vals;
           	vector<double> next_y_vals;
- 
 
 			// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 			 
@@ -362,16 +404,7 @@ int main() {
 				y_point += ref_y;
 				
 				next_x_vals.push_back(x_point);
-				next_y_vals.push_back(y_point);
-				
-				/*
-				//1st drive straight...
-				double next_s = car_s + (i+1)*dist_inc;
-				double next_d = 1.5*4; //mid lane of 3 lanes road, lane is 4m wide
-				vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);	
-				next_x_vals.push_back(xy[0]);
-				next_y_vals.push_back(xy[1]);
-				*/
+				next_y_vals.push_back(y_point);				
 			}
 			//End TODO
 
