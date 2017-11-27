@@ -2,7 +2,7 @@
 Self-Driving Car Engineer Nanodegree Program
 
 <p align="center">
-	<img width="650" height="450" src="https://github.com/SamH1/CarND-Path-Planning-Project/edit/master/15miles.PNG">
+	<img src="https://github.com/SamH1/CarND-Path-Planning-Project/blob/master/15miles.PNG">
 </p>
 
 ### Disclosure
