@@ -313,10 +313,10 @@ int main() {
 			//incremental deceleration/acceleration to avoid to exceed jerk limits
 			if (too_close) // if obstacle upfront => incremental break 
 			{
-				if (ref_vel > front_car_speed)
-				{
-					ref_vel -= .224*.75;
-				}
+				//if (ref_vel > front_car_speed) //crashed in the front car in Submition 1
+				//{
+					ref_vel -= .224;
+				//}
 				
 				if (left_lane_safe) 
 				{
@@ -330,7 +330,7 @@ int main() {
 				}
 			} else if (ref_vel < 49.5) // our target velocity is 49.5 when no obstacle => incremental acceleration
 			{
-				ref_vel += .224;
+				ref_vel += .224*.8; //80% of break to reduce wobbling
 			}
 
 			// create a list of widely spaced (x,y) waypoints, evenly spaced //wt
@@ -374,10 +374,10 @@ int main() {
 				ptsy.push_back(ref_y);
 			}
 
-			//in Frenet add evenly 20m spaced points ahead of the starting reference //wt
-			vector<double> next_wp0 = getXY(car_s+30, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-			vector<double> next_wp1 = getXY(car_s+60, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-			vector<double> next_wp2 = getXY(car_s+90, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			//in Frenet add evenly 30m spaced points ahead of the starting reference //wt
+			vector<double> next_wp0 = getXY(car_s+25, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			vector<double> next_wp1 = getXY(car_s+50, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			vector<double> next_wp2 = getXY(car_s+75, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 
 			ptsx.push_back(next_wp0[0]);
 			ptsx.push_back(next_wp1[0]);
@@ -423,8 +423,8 @@ int main() {
 
 			double x_add_on = 0;
 
-			//fill up the rest of the path planner after finning it with previous points, here we will always output 50 points //wt
-			for(int i = 1; i <= 50-previous_path_x.size(); i++)
+			//fill up the rest of the path planner after finning it with previous points, here we will always output 60 points //wt
+			for(int i = 1; i <= 55-previous_path_x.size(); i++)
 			{   
 				double N = (target_dist/(.02*ref_vel/2.24)); // 2.24 conversion factor from miles/h to m/s
 				double x_point = x_add_on+(target_x)/N;
